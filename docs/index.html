@@ -1,0 +1,1613 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="A client-grouped evaluation of machine-learning ranking for prioritizing content pages for human review using historical search-performance signals.">
+  <title>Can machine learning prioritize content pages for review?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --ink: #152521;
+      --muted: #52635e;
+      --paper: #f7f8f4;
+      --card: #ffffff;
+      --line: #dce4dd;
+      --line-strong: #c2d1c5;
+      --green: #146b52;
+      --green-hover: #0d4a38;
+      --mint: #d8f3e6;
+      --mint-light: #eef9f3;
+      --emerald-deep: #102c26;
+      --accent-mint: #54e399;
+      --orange: #9b4b1d;
+      --orange-bg: #fff0e5;
+      --orange-border: #ffd1b3;
+      --blue: #315e8a;
+      --shadow-sm: 0 2px 8px rgba(21, 37, 33, 0.04);
+      --shadow: 0 10px 30px rgba(21, 37, 33, 0.06);
+      --shadow-md: 0 14px 34px rgba(21, 37, 33, 0.09);
+      --shadow-lg: 0 20px 48px rgba(21, 37, 33, 0.12);
+      --max: 1120px;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 18px;
+      --transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 85px;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.72;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+    }
+
+    /* Reading Progress Bar */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 0%;
+      background: linear-gradient(90deg, #146b52, #54e399);
+      z-index: 9999;
+      transition: width 0.1s ease-out;
+      box-shadow: 0 0 8px rgba(84, 227, 153, 0.5);
+    }
+
+    a {
+      color: var(--green);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease, text-decoration-color 0.2s ease;
+    }
+
+    a:hover {
+      color: var(--green-hover);
+      text-decoration-thickness: 2px;
+    }
+
+    :focus-visible {
+      outline: 2.5px solid var(--green);
+      outline-offset: 2.5px;
+    }
+
+    .skip {
+      position: absolute;
+      left: -9999px;
+      top: auto;
+    }
+
+    .skip:focus {
+      left: 1rem;
+      top: 1rem;
+      background: white;
+      color: var(--green);
+      font-weight: 600;
+      padding: 0.8rem 1.2rem;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      z-index: 10000;
+      border: 1px solid var(--line);
+    }
+
+    /* Header & Hero */
+    header {
+      background: radial-gradient(100% 120% at 85% 10%, rgba(84, 227, 153, 0.12) 0%, rgba(16, 44, 38, 0) 65%), #102c26;
+      color: #f5fff9;
+      padding: 20px max(22px, calc((100vw - var(--max)) / 2));
+      border-bottom: 3.5px solid #7dd9ac;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      left: -60px;
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle, rgba(125, 217, 172, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #c2d9ce;
+      font-weight: 500;
+    }
+
+    .topline a {
+      color: #d7f7e5;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(215, 247, 229, 0.2);
+      transition: var(--transition);
+    }
+
+    .topline a:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border-color: #7dd9ac;
+      transform: translateX(2px);
+    }
+
+    .hero {
+      max-width: var(--max);
+      margin: auto;
+      padding: 64px 22px 68px;
+      animation: heroEntrance 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes heroEntrance {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #a8e9c5;
+      font-weight: 700;
+    }
+
+    .eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #54e399;
+      box-shadow: 0 0 8px rgba(84, 227, 153, 0.8);
+    }
+
+    .hero h1 {
+      max-width: 920px;
+      font-size: clamp(2.35rem, 5.5vw, 4.4rem);
+      line-height: 1.05;
+      letter-spacing: -0.045em;
+      margin: 18px 0 22px;
+      font-weight: 800;
+      text-wrap: balance;
+    }
+
+    .hero p {
+      max-width: 760px;
+      color: #d1e2d8;
+      font-size: 1.15rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    .pill {
+      border: 1px solid rgba(168, 233, 197, 0.3);
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
+      border-radius: 99px;
+      padding: 6px 14px;
+      color: #e4f5eb;
+      font-size: 0.82rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .pill:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: #7dd9ac;
+      transform: translateY(-1px);
+    }
+
+    /* Layout Grid */
+    .layout {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 40px 22px 90px;
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 50px;
+    }
+
+    /* Sticky Left Navbar / Table of Contents */
+    .toc-sidebar {
+      position: sticky;
+      top: 26px;
+      align-self: start;
+      max-height: calc(100vh - 52px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 20px 16px;
+      box-shadow: var(--shadow-sm);
+      font-size: 0.88rem;
+      transition: var(--transition);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .toc:hover {
+      box-shadow: var(--shadow);
+      border-color: var(--line-strong);
+    }
+
+    .toc-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.76rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 750;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toc-indicator-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px rgba(20, 107, 82, 0.6);
+      animation: pulseDot 2.5s infinite ease-in-out;
+    }
+
+    @keyframes pulseDot {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 0.8;
+      }
+
+      50% {
+        transform: scale(1.3);
+        opacity: 1;
+        box-shadow: 0 0 10px rgba(84, 227, 153, 0.9);
+      }
+    }
+
+    .toc nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .toc a {
+      display: block;
+      text-decoration: none;
+      color: var(--muted);
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      border-left: 2.5px solid transparent;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      font-weight: 500;
+      line-height: 1.35;
+    }
+
+    .toc a:hover {
+      color: var(--green);
+      background: rgba(20, 107, 82, 0.05);
+      border-left-color: rgba(20, 107, 82, 0.4);
+      padding-left: 15px;
+    }
+
+    .toc a.active {
+      color: var(--green);
+      background: rgba(20, 107, 82, 0.09);
+      border-left-color: var(--green);
+      font-weight: 650;
+      padding-left: 15px;
+    }
+
+    /* Main Content Styling */
+    main {
+      min-width: 0;
+    }
+
+    section,
+    article,
+    .abstract {
+      scroll-margin-top: 85px;
+    }
+
+    .abstract {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--green);
+      border-radius: var(--radius-lg);
+      padding: 30px 32px;
+      box-shadow: var(--shadow);
+      margin-bottom: 42px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .abstract::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle, rgba(20, 107, 82, 0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .abstract:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--line-strong);
+      border-left-color: var(--green);
+    }
+
+    .abstract h2 {
+      margin-top: 0;
+      color: var(--ink);
+      font-size: clamp(1.6rem, 3.2vw, 2.15rem);
+    }
+
+    .abstract p {
+      margin-bottom: 0;
+      font-size: 1.02rem;
+      line-height: 1.76;
+    }
+
+    .abstract b {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    section {
+      margin: 0 0 54px;
+      transition: opacity 0.4s ease;
+    }
+
+    h2 {
+      font-size: clamp(1.65rem, 3vw, 2.2rem);
+      letter-spacing: -0.035em;
+      line-height: 1.22;
+      margin: 0 0 18px;
+      font-weight: 750;
+      color: var(--ink);
+      position: relative;
+    }
+
+    h3 {
+      font-size: 1.2rem;
+      letter-spacing: -0.02em;
+      line-height: 1.35;
+      margin: 30px 0 10px;
+      font-weight: 700;
+      color: #20352f;
+    }
+
+    p {
+      margin: 0 0 16px;
+    }
+
+    ul,
+    ol {
+      padding-left: 1.35rem;
+      margin: 14px 0 20px;
+    }
+
+    li {
+      margin: 0.45rem 0;
+    }
+
+    .lede {
+      font-size: 1.12rem;
+      line-height: 1.68;
+      color: #344940;
+      font-weight: 500;
+    }
+
+    /* Stat Cards */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin: 28px 0;
+    }
+
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 22px 20px;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--green), #54e399);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .stat:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+      border-color: #b8cebf;
+    }
+
+    .stat:hover::before {
+      opacity: 1;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: clamp(1.55rem, 3vw, 2.15rem);
+      letter-spacing: -0.04em;
+      line-height: 1.15;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    /* Callouts */
+    .callout {
+      border-left: 4.5px solid var(--green);
+      background: var(--mint-light);
+      padding: 18px 22px;
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      margin: 24px 0;
+      box-shadow: var(--shadow-sm);
+      line-height: 1.65;
+    }
+
+    .caution {
+      border-left-color: var(--orange);
+      background: var(--orange-bg);
+      border: 1px solid var(--orange-border);
+      border-left-width: 4.5px;
+      border-left-color: var(--orange);
+    }
+
+    /* Chart Cards */
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 24px 24px 22px;
+      margin: 28px 0;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .chart-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--line-strong);
+    }
+
+    .chart-card h3 {
+      margin: 0 0 10px;
+      font-size: 1.15rem;
+    }
+
+    .chart-card p {
+      color: var(--muted);
+      font-size: 0.94rem;
+      line-height: 1.6;
+      margin: 14px 0 0;
+    }
+
+    .chart {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .chart rect {
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, filter 0.2s ease;
+    }
+
+    .chart rect:hover {
+      filter: brightness(1.16) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.12));
+      opacity: 0.95;
+      cursor: pointer;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: white;
+      margin: 22px 0;
+      box-shadow: var(--shadow-sm);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.94rem;
+      min-width: 520px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: #edf3ee;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #344940;
+      font-weight: 700;
+    }
+
+    tbody tr {
+      transition: background-color 0.18s ease;
+    }
+
+    tbody tr:hover td {
+      background-color: #f4f8f5;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    td.num,
+    th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .caption {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    .tag {
+      display: inline-block;
+      border-radius: 6px;
+      background: #e8eee9;
+      padding: 2.5px 8px;
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #233e36;
+    }
+
+    .code {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 0.88rem;
+      background: #edf1ed;
+      padding: 2.5px 6px;
+      border-radius: 5px;
+      overflow-wrap: anywhere;
+      color: #1a4237;
+      border: 1px solid #d9e3db;
+    }
+
+    .source-list li {
+      margin: 0.65rem 0;
+    }
+
+    .source-list a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Credential Badge Container */
+    .credential-section {
+      margin: 36px 0 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .credential-header {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 750;
+      margin-bottom: 14px;
+    }
+
+    .credential-badge-card {
+      transition: var(--transition) !important;
+    }
+
+    .credential-badge-card:hover {
+      transform: translateY(-4px) !important;
+      box-shadow: 0 16px 36px rgba(5, 31, 33, 0.12) !important;
+      border-color: #b8cebf !important;
+    }
+
+    /* Footer */
+    .footer {
+      background: var(--emerald-deep);
+      color: #d1e2d8;
+      padding: 38px 22px;
+      border-top: 1px solid rgba(125, 217, 172, 0.2);
+    }
+
+    .footer-inner {
+      max-width: var(--max);
+      margin: auto;
+    }
+
+    .footer-inner b {
+      color: #ffffff;
+      font-size: 1.05rem;
+    }
+
+    .footer a {
+      color: #b9f0d0;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: var(--transition);
+    }
+
+    .footer a:hover {
+      color: #ffffff;
+      transform: translateX(2px);
+    }
+
+    .small {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .footer .small {
+      color: #b6cec2;
+      margin: 10px 0 16px;
+      line-height: 1.6;
+    }
+
+    .rule {
+      height: 1px;
+      background: var(--line);
+      margin: 34px 0;
+    }
+
+    /* Back to top floating button */
+    #back-to-top {
+      position: fixed;
+      bottom: 26px;
+      right: 26px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #ffffff;
+      border: none;
+      box-shadow: 0 6px 18px rgba(20, 107, 82, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(12px);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, box-shadow 0.2s;
+      z-index: 900;
+    }
+
+    #back-to-top.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    #back-to-top:hover {
+      background: var(--green-hover);
+      box-shadow: 0 8px 24px rgba(20, 107, 82, 0.5);
+      transform: translateY(-2px);
+    }
+
+    /* Responsive Media Queries */
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+        gap: 26px;
+        padding-top: 18px;
+      }
+
+      /* Mobile Sticky Horizontal Bar */
+      .toc-sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        max-height: none;
+        margin: -10px -22px 18px;
+        padding: 10px 22px 12px;
+        background: rgba(247, 248, 244, 0.95);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--line);
+        box-shadow: 0 4px 14px rgba(21, 37, 33, 0.04);
+      }
+
+      .toc {
+        padding: 0;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+        -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+      }
+
+      .toc::-webkit-scrollbar {
+        display: none;
+      }
+
+      .toc-heading {
+        display: none;
+      }
+
+      .toc nav {
+        flex-direction: row;
+        gap: 8px;
+        padding: 2px 14px;
+      }
+
+      .toc a {
+        white-space: nowrap;
+        padding: 7px 15px;
+        border-radius: 99px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        font-size: 0.84rem;
+        box-shadow: 0 1px 3px rgba(21, 37, 33, 0.04);
+        border-left: 1px solid var(--line);
+      }
+
+      .toc a:hover {
+        border-color: var(--green);
+        padding-left: 15px;
+      }
+
+      .toc a.active {
+        background: var(--green);
+        color: #ffffff;
+        border-color: var(--green);
+        padding-left: 15px;
+        box-shadow: 0 3px 10px rgba(20, 107, 82, 0.28);
+      }
+
+      .stats {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
+      .hero {
+        padding-top: 50px;
+        padding-bottom: 54px;
+      }
+    }
+
+    @media (max-width: 580px) {
+      .hero h1 {
+        font-size: clamp(2rem, 8vw, 2.7rem);
+        line-height: 1.1;
+      }
+
+      .hero p {
+        font-size: 1.05rem;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .abstract {
+        padding: 22px 20px;
+      }
+
+      .chart-card {
+        padding: 16px 14px;
+      }
+
+      .topline {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      #back-to-top {
+        bottom: 18px;
+        right: 18px;
+        width: 40px;
+        height: 40px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="progress-bar" aria-hidden="true"></div>
+  <a class="skip" href="#content">Skip to research paper</a>
+
+  <header>
+    <div class="topline">
+      <span>Machine learning · Research artifact</span>
+      <a href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank">Repository ↗</a>
+    </div>
+    <div class="hero">
+      <div class="eyebrow">FlyRank ML Internship · Capstone</div>
+      <h1>Can machine learning prioritize content pages for review?</h1>
+      <p>A client-grouped evaluation of historical search-performance signals for ranking pages that may warrant human
+        investigation.</p>
+      <div class="hero-meta">
+        <span class="pill">Ranking & decision support</span>
+        <span class="pill">Random Forest</span>
+        <span class="pill">Client-grouped holdout</span>
+        <span class="pill">Public-safe summary</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="toc-sidebar">
+      <div class="toc" aria-label="Paper navigation">
+        <div class="toc-heading">
+          <span class="toc-indicator-dot"></span>
+          <span>On this page</span>
+        </div>
+        <nav aria-label="Paper sections">
+          <a href="#abstract">Abstract</a>
+          <a href="#introduction">Introduction</a>
+          <a href="#data">Data</a>
+          <a href="#methodology">Methodology</a>
+          <a href="#results">Results</a>
+          <a href="#limitations">Limitations</a>
+          <a href="#recommendations">Recommendations</a>
+          <a href="#reproducibility">Reproducibility</a>
+          <a href="#acknowledgments">Data credit</a>
+        </nav>
+      </div>
+    </aside>
+
+    <main id="content">
+      <article class="abstract" id="abstract">
+        <h2>Abstract</h2>
+        <p><b>Question:</b> Can a machine-learning ranking system prioritize content pages for review more effectively
+          than a fixed rule baseline when tested on clients excluded from training? <b>Data:</b> The analysis joined
+          content metadata with query-level performance aggregated to 133,852 client–content pages, using a snapshot
+          covering 2 April to 30 June 2026. <b>Method:</b> A Random Forest and Logistic Regression were evaluated with
+          Precision@K on a single 80/20 client-grouped split, with a target defined as a click decline of at least 20%
+          between two 30-day windows. <b>Result:</b> The Random Forest achieved Precision@100 of 0.790, Precision@500 of
+          0.780, and Precision@1,000 of 0.737; the Week 4 rule baseline scored 0.060, 0.062, and 0.031 on the same
+          held-out set, while the test base rate was 0.106. <b>Use:</b> These results support further evaluation of a
+          human-review prioritization workflow, not a claim that the model forecasts future decline or that refreshing a
+          page causes better performance.</p>
+      </article>
+
+      <section id="introduction">
+        <h2>1. Introduction / Problem statement</h2>
+        <p class="lede">Content teams often have more pages to inspect than they can review at once. The practical
+          question is not simply whether a page has a problem; it is which pages deserve attention first, based on
+          available evidence.</p>
+        <p>This project tests a ranking approach for content opportunity review. It uses historical search and content
+          signals to order pages for manual inspection, then compares that ranking with a rule-based score under a
+          client-held-out evaluation.</p>
+        <p>The study deliberately defines a narrow target: observed click decline across two 30-day windows. That target
+          is a measurable proxy for triage, not a direct measure of content quality, customer value, or refresh success.
+        </p>
+        <div class="stats">
+          <div class="stat"><strong>133,852</strong><span>Client–content page records after aggregation and join</span>
+          </div>
+          <div class="stat"><strong>52</strong><span>Distinct clients in the page-level dataset</span></div>
+          <div class="stat"><strong>15,908</strong><span>Held-out pages in the grouped test set</span></div>
+        </div>
+      </section>
+
+      <section id="data">
+        <h2>2. Data</h2>
+        <h3>Source and release</h3>
+        <p>The project used the FlyRank internship warehouse dataset, loaded through the Hugging Face dataset
+          configurations <span class="code">dim_content</span> and <span class="code">fact_content_query_90d</span>. The
+          available executed notebook outputs report 519,606 rows and 26 columns in the content dimension, and 2,414,248
+          rows and 21 columns in the query-performance fact table.</p>
+        <p>The performance snapshot covers <b>2026-04-02 through 2026-06-30</b>. The fact table includes 90-day totals
+          and separate previous-30-day and latest-30-day metrics. Query-level records were aggregated by client and
+          content identifier, then joined to content metadata, yielding 133,852 page-level rows and 40 columns before
+          model-specific preparation.</p>
+        <h3>Unit of analysis and public-safe handling</h3>
+        <ul>
+          <li><b>Unit:</b> one row per client–content page after query-level aggregation.</li>
+          <li><b>Target:</b> a binary proxy for a 20% or greater click decline from the previous 30-day window to the
+            latest 30-day window.</li>
+          <li><b>Excluded from the public paper:</b> raw queries, page URLs, client names, and row-level client/content
+            identifiers. No row-level operational queue is embedded in this page.</li>
+          <li><b>Excluded from model features:</b> latest-30-day and 90-day outcome-period performance columns, as they
+            overlap the period used to define the label. Identifiers are used for grouping, not as predictive features.
+          </li>
+          <li><b>Separate sample audit:</b> a 200-row sample contained a <span class="code">trend_direction</span> field
+            that matched its label row-for-row; it was excluded from modeling. That sample is not treated as the primary
+            capstone dataset.</li>
+        </ul>
+        <div class="callout caution"><b>Data interpretation:</b> the notebooks do not establish that the target captures
+          every meaningful decline. Pages with zero clicks in the previous window are assigned a negative label by the
+          implementation, while percentage changes for pages with very few previous clicks can be unstable.</div>
+      </section>
+
+      <section id="methodology">
+        <h2>3. Methodology</h2>
+        <h3>Target definition</h3>
+        <p>For pages with a nonzero previous-period click count, the proxy percentage change is:</p>
+        <p><span class="code">(clicks_last30 − clicks_prev30) / clicks_prev30</span></p>
+        <p>The positive class is assigned when this value is less than or equal to −0.20. In the executed
+          implementation, zero-denominator values become missing during the calculation and then receive label 0 when
+          the binary target is constructed. This choice is a limitation, not evidence that those pages are healthy.</p>
+        <h3>Features and preprocessing</h3>
+        <p>The seven model features were <span class="code">impressions_prev30</span>, <span
+            class="code">clicks_prev30</span>, <span class="code">avg_position_prev30</span>, <span
+            class="code">word_count</span>, <span class="code">search_volume</span>, <span
+            class="code">keyword_char_count</span>, and <span class="code">url_char_count</span>. Missing values were
+          imputed with medians fitted on the training set and applied to the test set. Logistic Regression used
+          standardized features; Random Forest used the original feature scales.</p>
+        <h3>Models and baseline</h3>
+        <ul>
+          <li><b>Random Forest:</b> 100 trees, maximum depth 6, random state 42.</li>
+          <li><b>Logistic Regression:</b> maximum 1,000 iterations, random state 42, with standard scaling.</li>
+          <li><b>Week 4 rule baseline:</b> a fixed threshold score based on 90-day average position, CTR, and
+            impressions. It was reconstructed on the same grouped test rows, but it was originally designed for weak
+            visibility rather than the click-decline target, and its 90-day inputs overlap the outcome period.
+            Therefore, it is a useful historical reference but not a fully matched, leakage-safe benchmark.</li>
+        </ul>
+        <h3>Validation design and leakage checks</h3>
+        <p>The primary split used <span class="code">GroupShuffleSplit</span> with 20% held out and <span
+            class="code">random_state=42</span>, grouping by <span class="code">client_hash_id</span>. The split
+          produced 117,944 training pages and 15,908 test pages with zero client overlap. This evaluates ranking on
+          clients absent from training, which is closer to the intended cross-client use than a random-row split.</p>
+        <p>Latest-30-day and 90-day outcome-period metrics were excluded from the model feature set. Identifiers were
+          used for grouping and traceability only. The validation audit also found that a random-row split had 50
+          clients represented in both train and test; its higher scores are reported as a diagnostic, not as the primary
+          result. A single grouped split across 52 clients is still limited evidence, and does not replace repeated
+          grouped splits or time-based validation.</p>
+      </section>
+
+      <section id="results">
+        <h2>4. Results</h2>
+        <p class="lede">The primary result is the executed Week 5 comparison on the client-grouped test set of 15,908
+          pages, where the positive-label base rate was 10.6%.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ranking method</th>
+                <th class="num">Precision@100</th>
+                <th class="num">Precision@500</th>
+                <th class="num">Precision@1,000</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Random Forest</b></td>
+                <td class="num">79.0%</td>
+                <td class="num">78.0%</td>
+                <td class="num">73.7%</td>
+              </tr>
+              <tr>
+                <td>Logistic Regression</td>
+                <td class="num">56.0%</td>
+                <td class="num">62.4%</td>
+                <td class="num">58.1%</td>
+              </tr>
+              <tr>
+                <td>Week 4 rule baseline*</td>
+                <td class="num">6.0%</td>
+                <td class="num">6.2%</td>
+                <td class="num">3.1%</td>
+              </tr>
+              <tr>
+                <td>Test base rate</td>
+                <td class="num">10.6%</td>
+                <td class="num">10.6%</td>
+                <td class="num">10.6%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption">Precision@K is the share of the top K ranked pages carrying the observed click-decline proxy
+          label. Values are from executed Week 5 notebook outputs. *The rule baseline targets weak visibility and
+          includes 90-day metrics overlapping the label window, so it should not be interpreted as a fully fair or
+          leakage-safe comparison.</p>
+
+        <div class="chart-card">
+          <h3>Figure 1. Precision@K by ranking method</h3>
+          <svg class="chart" viewBox="0 0 720 350" role="img" aria-labelledby="fig1title fig1desc">
+            <title id="fig1title">Precision at K for three ranking methods and the test base rate</title>
+            <desc id="fig1desc">Grouped bars compare Random Forest, Logistic Regression, Week 4 rule baseline, and test
+              base rate at K 100, 500, and 1000. Random Forest scores 79, 78, and 73.7 percent. Logistic Regression
+              scores 56, 62.4, and 58.1 percent. The rule baseline scores 6, 6.2, and 3.1 percent. Base rate is 10.6
+              percent.</desc>
+            <g font-family="system-ui,sans-serif" font-size="11" fill="#52635e">
+              <line x1="62" y1="270" x2="690" y2="270" stroke="#b9c8bd" />
+              <line x1="62" y1="216" x2="690" y2="216" stroke="#e0e7e1" />
+              <line x1="62" y1="162" x2="690" y2="162" stroke="#e0e7e1" />
+              <line x1="62" y1="108" x2="690" y2="108" stroke="#e0e7e1" />
+              <line x1="62" y1="54" x2="690" y2="54" stroke="#e0e7e1" />
+              <text x="48" y="274" text-anchor="end">0%</text><text x="48" y="220" text-anchor="end">20%</text><text
+                x="48" y="166" text-anchor="end">40%</text><text x="48" y="112" text-anchor="end">60%</text><text x="48"
+                y="58" text-anchor="end">80%</text>
+            </g>
+            <g>
+              <rect x="105" y="56.7" width="24" height="213.3" rx="3" fill="#146b52">
+                <title>Random Forest (K=100): 79.0%</title>
+              </rect>
+              <rect x="132" y="118.8" width="24" height="151.2" rx="3" fill="#315e8a">
+                <title>Logistic Regression (K=100): 56.0%</title>
+              </rect>
+              <rect x="159" y="253.8" width="24" height="16.2" rx="3" fill="#c46d35">
+                <title>Week 4 rule (K=100): 6.0%</title>
+              </rect>
+              <rect x="186" y="241.4" width="24" height="28.6" rx="3" fill="#9aa8a0">
+                <title>Test base rate (K=100): 10.6%</title>
+              </rect>
+              <rect x="302" y="59.4" width="24" height="210.6" rx="3" fill="#146b52">
+                <title>Random Forest (K=500): 78.0%</title>
+              </rect>
+              <rect x="329" y="101.5" width="24" height="168.5" rx="3" fill="#315e8a">
+                <title>Logistic Regression (K=500): 62.4%</title>
+              </rect>
+              <rect x="356" y="253.3" width="24" height="16.7" rx="3" fill="#c46d35">
+                <title>Week 4 rule (K=500): 6.2%</title>
+              </rect>
+              <rect x="383" y="241.4" width="24" height="28.6" rx="3" fill="#9aa8a0">
+                <title>Test base rate (K=500): 10.6%</title>
+              </rect>
+              <rect x="499" y="70.7" width="24" height="199.3" rx="3" fill="#146b52">
+                <title>Random Forest (K=1,000): 73.7%</title>
+              </rect>
+              <rect x="526" y="113.1" width="24" height="156.9" rx="3" fill="#315e8a">
+                <title>Logistic Regression (K=1,000): 58.1%</title>
+              </rect>
+              <rect x="553" y="261.6" width="24" height="8.4" rx="3" fill="#c46d35">
+                <title>Week 4 rule (K=1,000): 3.1%</title>
+              </rect>
+              <rect x="580" y="241.4" width="24" height="28.6" rx="3" fill="#9aa8a0">
+                <title>Test base rate (K=1,000): 10.6%</title>
+              </rect>
+            </g>
+            <g font-family="system-ui,sans-serif" font-size="12" fill="#152521" text-anchor="middle"><text x="158"
+                y="292">K = 100</text><text x="355" y="292">K = 500</text><text x="552" y="292">K = 1,000</text></g>
+            <g font-family="system-ui,sans-serif" font-size="11" fill="#52635e">
+              <rect x="75" y="316" width="10" height="10" fill="#146b52" /><text x="90" y="325">Random Forest</text>
+              <rect x="208" y="316" width="10" height="10" fill="#315e8a" /><text x="223" y="325">Logistic
+                Regression</text>
+              <rect x="375" y="316" width="10" height="10" fill="#c46d35" /><text x="390" y="325">Week 4 rule*</text>
+              <rect x="498" y="316" width="10" height="10" fill="#9aa8a0" /><text x="513" y="325">Test base rate</text>
+            </g>
+          </svg>
+          <p><b>Takeaway:</b> Random Forest ranked the decline proxy above the other methods at each cutoff in this
+            held-out split, but the rule baseline's different objective and overlapping 90-day inputs limit the strength
+            of the comparison.</p>
+        </div>
+
+        <div class="chart-card">
+          <h3>Figure 2. Random-row vs client-grouped validation</h3>
+          <svg class="chart" viewBox="0 0 720 285" role="img" aria-labelledby="fig2title fig2desc">
+            <title id="fig2title">Random-row and client-grouped validation results</title>
+            <desc id="fig2desc">Random-row precision at K 100, 500, and 1000 is 89, 82.2, and 79 percent. Client-grouped
+              precision is 79, 78, and 73.7 percent. Random-row split had 50 overlapping clients; grouped split had
+              none.</desc>
+            <g font-family="system-ui,sans-serif" font-size="11" fill="#52635e">
+              <line x1="65" y1="218" x2="680" y2="218" stroke="#b9c8bd" />
+              <line x1="65" y1="174" x2="680" y2="174" stroke="#e0e7e1" />
+              <line x1="65" y1="130" x2="680" y2="130" stroke="#e0e7e1" />
+              <line x1="65" y1="86" x2="680" y2="86" stroke="#e0e7e1" />
+              <line x1="65" y1="42" x2="680" y2="42" stroke="#e0e7e1" />
+              <text x="50" y="222" text-anchor="end">0%</text><text x="50" y="178" text-anchor="end">25%</text><text
+                x="50" y="134" text-anchor="end">50%</text><text x="50" y="90" text-anchor="end">75%</text><text x="50"
+                y="46" text-anchor="end">100%</text>
+            </g>
+            <g>
+              <rect x="140" y="61.4" width="38" height="156.6" rx="4" fill="#9aa8a0">
+                <title>Random row split (K=100): 89.0%</title>
+              </rect>
+              <rect x="180" y="79.0" width="38" height="139.0" rx="4" fill="#146b52">
+                <title>Client-grouped split (K=100): 79.0%</title>
+              </rect>
+              <rect x="332" y="73.3" width="38" height="144.7" rx="4" fill="#9aa8a0">
+                <title>Random row split (K=500): 82.2%</title>
+              </rect>
+              <rect x="372" y="81.3" width="38" height="136.7" rx="4" fill="#146b52">
+                <title>Client-grouped split (K=500): 78.0%</title>
+              </rect>
+              <rect x="524" y="79.4" width="38" height="138.6" rx="4" fill="#9aa8a0">
+                <title>Random row split (K=1,000): 79.0%</title>
+              </rect>
+              <rect x="564" y="88.7" width="38" height="129.3" rx="4" fill="#146b52">
+                <title>Client-grouped split (K=1,000): 73.7%</title>
+              </rect>
+            </g>
+            <g font-family="system-ui,sans-serif" font-size="12" fill="#152521" text-anchor="middle"><text x="179"
+                y="239">K = 100</text><text x="371" y="239">K = 500</text><text x="563" y="239">K = 1,000</text></g>
+            <g font-family="system-ui,sans-serif" font-size="11" fill="#52635e">
+              <rect x="195" y="258" width="10" height="10" fill="#9aa8a0" /><text x="210" y="267">Random row
+                split</text>
+              <rect x="345" y="258" width="10" height="10" fill="#146b52" /><text x="360" y="267">Client-grouped
+                split</text>
+            </g>
+          </svg>
+          <p><b>Takeaway:</b> Precision@100 was 89.0% on a random-row split and 79.0% on the client-grouped split; the
+            random-row split placed 50 clients in both sets, while the grouped split had zero client overlap. Test-set
+            sizes and base rates also differed, so the gap cannot be attributed to client leakage alone.</p>
+        </div>
+
+        <h3>Interpretation</h3>
+        <p>Random Forest's Precision@K was 0.790, 0.780, and 0.737 on the grouped test set, compared with a 0.106
+          positive-label rate. This indicates useful ranking signal on this split. It does not establish future
+          forecasting performance, stable performance across future samples, or a causal benefit from editing pages.</p>
+        <p>The Week 5 feature-importance output assigns 77.68% of Random Forest importance to <span
+            class="code">clicks_prev30</span>, followed by 16.63% to <span class="code">impressions_prev30</span>.
+          Because previous clicks are also the denominator in the target, the model may partly exploit the target's
+          mathematical structure. This makes low-volume handling a priority for further validation.</p>
+      </section>
+
+      <section id="limitations">
+        <h2>5. Limitations & honest framing</h2>
+        <ul>
+          <li><b>Proxy outcome:</b> the label measures observed historical click decline, not content quality,
+            satisfaction, future decline, or refresh success.</li>
+          <li><b>Low-volume instability:</b> a percentage decline can be extreme when the previous count is one or two
+            clicks. The audited false-positive examples included very low historical click counts.</li>
+          <li><b>Mechanical target relationship:</b> <span class="code">clicks_prev30</span> is the target denominator
+            and the most important feature. A traffic floor such as at least 10 previous clicks was proposed, but the
+            reported model was not retrained with that change.</li>
+          <li><b>Baseline comparability:</b> the Week 4 baseline was designed for weak visibility, not the decline
+            proxy, and uses 90-day inputs that overlap the outcome period. Its scores should not be framed as a fully
+            matched, leakage-safe baseline.</li>
+          <li><b>One grouped split:</b> validation held out clients and avoided overlap, but represents a single split
+            across 52 clients. Repeated grouped splits and a later time window are needed.</li>
+          <li><b>Not a future forecast:</b> both 30-day windows are inside the snapshot ending 30 June 2026; the task
+            classifies an observed decline rather than predicting a later one.</li>
+          <li><b>Separate reported comparison:</b> the 781-record results and manually entered Precision@K chart in the
+            draft were not independently reproduced from predictions and labels. They are not used as verified evidence
+            in this page.</li>
+          <li><b>Operational impact not measured:</b> no experiment here establishes that taking action on a recommended
+            page improves clicks, impressions, rankings, or revenue.</li>
+        </ul>
+        <div class="callout"><b>Honest conclusion:</b> the evidence supports testing the model as a human-review
+          prioritization aid. It does not justify automatic content changes or causal business-impact claims.</div>
+      </section>
+
+      <section id="recommendations">
+        <h2>6. Ranked recommendations / action playbook</h2>
+        <p>The Week 7 queue contains 15,908 unique pages from the client-grouped held-out set. It was scored by a refit
+          of the model configuration; Week 5 Precision@K values describe the earlier evaluated fit and were not
+          recomputed on the Week 7 queue. The action categories are workflow tiers, not estimates of business value.</p>
+
+        <div class="chart-card">
+          <h3>Figure 3. Week 7 action categories</h3>
+          <svg class="chart" viewBox="0 0 720 280" role="img" aria-labelledby="fig3title fig3desc">
+            <title id="fig3title">Distribution of the Week 7 action queue</title>
+            <desc id="fig3desc">Of 15,908 pages, 270 are REVIEW_HIGH, 3,707 REVIEW, 3,977 MONITOR, and 7,954
+              NO_IMMEDIATE_ACTION.</desc>
+            <g font-family="system-ui,sans-serif" font-size="12" fill="#152521">
+              <text x="0" y="42">REVIEW_HIGH</text>
+              <rect x="165" y="24" width="18" height="24" rx="3" fill="#146b52">
+                <title>REVIEW_HIGH: 270 pages (1.7%)</title>
+              </rect><text x="195" y="42">270 · 1.7%</text>
+              <text x="0" y="94">REVIEW</text>
+              <rect x="165" y="76" width="250" height="24" rx="3" fill="#315e8a">
+                <title>REVIEW: 3,707 pages (23.3%)</title>
+              </rect><text x="426" y="94">3,707 · 23.3%</text>
+              <text x="0" y="146">MONITOR</text>
+              <rect x="165" y="128" width="268" height="24" rx="3" fill="#b77b39">
+                <title>MONITOR: 3,977 pages (25.0%)</title>
+              </rect><text x="444" y="146">3,977 · 25.0%</text>
+              <text x="0" y="198">NO_IMMEDIATE_ACTION</text>
+              <rect x="165" y="180" width="536" height="24" rx="3" fill="#9aa8a0">
+                <title>NO_IMMEDIATE_ACTION: 7,954 pages (50.0%)</title>
+              </rect><text x="165" y="228" fill="#52635e">7,954 pages · 50.0%</text>
+            </g>
+          </svg>
+          <p><b>Takeaway:</b> Half of the held-out queue is marked for no immediate action, while 25.0% are marked for
+            monitoring, 23.3% for review, and 1.7% for high-priority review. Percentile-based tiers structure workload;
+            they do not prove which pages will benefit from a refresh.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Priority</th>
+                <th>Rule in the playbook</th>
+                <th>Recommended handling</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="tag">REVIEW_HIGH</span></td>
+                <td>Score at or above the 90th percentile and previous-period clicks ≥ 10</td>
+                <td>Review early; confirm the evidence and potential value before changing anything.</td>
+              </tr>
+              <tr>
+                <td><span class="tag">REVIEW</span></td>
+                <td>Score at or above the 75th percentile, including top-decile pages below the traffic floor</td>
+                <td>Inspect content fit, search intent, technical signals, seasonality, and recent changes.</td>
+              </tr>
+              <tr>
+                <td><span class="tag">MONITOR</span></td>
+                <td>Score at or above the median and below the 75th percentile</td>
+                <td>Track subsequent performance and revisit if signals change.</td>
+              </tr>
+              <tr>
+                <td><span class="tag">NO_IMMEDIATE_ACTION</span></td>
+                <td>Score below the median</td>
+                <td>Defer routine review unless independent evidence warrants attention.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Recommended reviewer order</h3>
+        <ol>
+          <li>Start with <span class="tag">REVIEW_HIGH</span>, then <span class="tag">REVIEW</span>, while checking
+            previous-period traffic volume.</li>
+          <li>Inspect current search results, intent match, content quality, recent edits, tracking or technical issues,
+            and possible seasonality.</li>
+          <li>Use the model score as one signal only. Record the human decision and reason.</li>
+          <li>If a refresh is approved, measure outcomes against a suitable comparison or controlled rollout rather than
+            assuming the change caused any movement.</li>
+          <li>Monitor Precision@K on new labeled data, label prevalence, feature distributions, missingness, client mix,
+            and action-tier distributions. Consider retraining if performance or data conditions materially change.</li>
+        </ol>
+        <div class="callout caution"><b>No-go list:</b> do not automatically publish, rewrite, delete, redirect,
+          canonicalize, or otherwise modify pages based on this score alone. Do not label content as low quality without
+          human inspection.</div>
+      </section>
+
+      <section id="reproducibility">
+        <h2>7. Reproducibility</h2>
+        <p>The repository contains the weekly notebooks and capstone. The executed results cited here are traced to
+          notebook outputs; the paper does not claim that every experiment has been rerun from a clean environment as
+          part of publishing this page.</p>
+        <ul class="source-list">
+          <li><a href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank">Project repository ↗</a></li>
+          <li><a
+              href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank/blob/main/work/notebooks/capstone.ipynb">Capstone
+              notebook ↗</a></li>
+          <li><a
+              href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank/blob/main/work/notebooks/w01_research_question.ipynb">Week
+              1 — Research question ↗</a></li>
+          <li><a
+              href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank/blob/main/work/notebooks/w02_ml_task_framing.ipynb">Week
+              2 — ML task framing ↗</a></li>
+          <li><a
+              href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank/blob/main/work/notebooks/w03_data_contract.ipynb">Week
+              3 — Data contract ↗</a></li>
+          <li><a
+              href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank/blob/main/work/notebooks/w04_baseline_score.ipynb">Week
+              4 — Baseline score ↗</a></li>
+          <li><a
+              href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank/blob/main/work/notebooks/w05_model.ipynb">Week
+              5 — Model training and comparison ↗</a></li>
+          <li><a
+              href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank/blob/main/work/notebooks/w06_validation_audit.ipynb">Week
+              6 — Validation audit ↗</a></li>
+          <li><a
+              href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank/blob/main/work/notebooks/w07_action_playbook.ipynb">Week
+              7 — Ranked action playbook ↗</a></li>
+        </ul>
+        <h3>Key configuration</h3>
+        <ul>
+          <li>Grouped split: 80/20 by client, <span class="code">random_state=42</span>.</li>
+          <li>Random Forest: <span class="code">n_estimators=100</span>, <span class="code">max_depth=6</span>, <span
+              class="code">random_state=42</span>.</li>
+          <li>Logistic Regression: <span class="code">max_iter=1000</span>, <span class="code">random_state=42</span>;
+            standard scaling fitted on training data.</li>
+          <li>Missing-value imputation: per-feature median fitted on training data only.</li>
+          <li>Primary metric: Precision@K for K = 100, 500, and 1,000.</li>
+        </ul>
+        <p class="small">For exact reproduction, run the notebooks in order in an environment with access to the
+          internship dataset and required dependencies. Do not publish credentials, raw private data, or row-level
+          action queues. The public page intentionally avoids exposing row-level identifiers.</p>
+      </section>
+
+      <section id="acknowledgments">
+        <h2>8. Acknowledgments & data credit</h2>
+        <p>Built on the <a href="https://flyrank.ai" target="_blank" rel="noopener noreferrer">FlyRank ML Internship
+            dataset</a>. Thanks to FlyRank for providing the dataset and project context used for this educational
+          modeling exercise.</p>
+        <p class="small">The results and interpretations on this page describe the analysis performed for the capstone
+          and should not be read as an official claim by FlyRank about model performance or business outcomes.</p>
+      </section>
+
+      <!-- Verified Credential Badge in the Bottom -->
+      <div class="credential-section">
+        <div class="credential-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#146b52" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <span>Verified Credential</span>
+        </div>
+        <a href="https://internship.flyrank.ai/verify?id=FR-D1-T668H-R789R&amp;first_name=Pranav" target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Verify Pranav Jagtap's FlyRank AI Internship credential FR-D1-T668H-R789R"
+          class="credential-badge-card"
+          style="box-sizing:border-box;margin:0;padding:0;border:0;background:none;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-style:normal;line-height:1.25;text-transform:none;float:none;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;width:236px;padding:22px;background:#FFFFFF;border:1px solid #DDE4E7;border-radius:20px;box-shadow:0 1px 2px rgba(5,31,33,0.05)">
+          <span
+            style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;display:flex;align-items:center;gap:10px">
+            <svg width="30" height="30" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true" focusable="false"
+              style="display:block;flex:none;opacity:1;transform:none;max-width:none">
+              <rect width="96" height="96" rx="22" fill="#051F21" />
+              <path
+                d="M28.2354 74.2202V67.9039C29.6419 68.4369 31.3724 68.7055 33.4311 68.7055C35.3235 68.7055 36.8153 68.2396 37.8979 67.3079C38.9805 66.3762 39.9566 64.8695 40.8218 62.792L42.6887 58.3139L29.8976 29.2879C35.0038 29.2879 39.6028 32.3307 41.5294 36.9893L47.0746 50.3985L56.0126 28.6038C57.9221 23.9452 62.5168 20.894 67.6187 20.894L50.0795 63.5936C48.4556 67.5933 46.5205 70.5102 44.2743 72.3484C42.0281 74.1867 39.1169 75.1058 35.5451 75.1058C32.6212 75.1058 30.1875 74.812 28.2354 74.2244V74.2202Z"
+                fill="#54E399" />
+            </svg>
+            <span
+              style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:8.5px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(5,31,33,0.5);line-height:1.4">FlyRank
+              AI Internship</span>
+          </span>
+          <span
+            style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;display:block;height:1px;background:#E4EAED;margin:18px 0"></span>
+          <span
+            style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;display:flex;flex-direction:column;gap:6px">
+            <span
+              style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;font-size:19px;font-weight:600;color:#051F21;letter-spacing:-0.02em;line-height:1.25">Pranav
+              Jagtap</span>
+            <span
+              style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;font-size:13px;font-weight:600;color:#1A7A4A">Machine
+              Learning</span>
+            <span
+              style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;font-size:12px;color:rgba(5,31,33,0.5)">July
+              2026 cohort</span>
+          </span>
+          <span
+            style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;display:flex;align-items:center;gap:8px;margin-top:18px;padding:10px 12px;background:rgba(84,227,153,0.12);border:1px solid rgba(84,227,153,0.28);border-radius:12px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true" focusable="false"
+              style="display:block;flex:none;opacity:1;transform:none;max-width:none">
+              <circle cx="12" cy="12" r="10" stroke="#1A7A4A" stroke-width="1.5" />
+              <path d="M7.9 12.3l2.8 2.8 5.4-5.8" stroke="#1A7A4A" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+            <span
+              style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;font-size:12.5px;font-weight:600;color:#1A7A4A">Verified
+              credential</span>
+          </span>
+          <span
+            style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;display:flex;flex-direction:column;gap:5px;margin-top:18px;padding-top:16px;border-top:1px solid #E4EAED">
+            <span
+              style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:8px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(5,31,33,0.5)">Credential
+              ID</span>
+            <span
+              style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;color:#051F21">FR-D1-T668H-R789R</span>
+            <span
+              style="margin:0;padding:0;border:0;background:none;color:inherit;font-weight:400;font-style:normal;letter-spacing:normal;text-transform:none;text-decoration:none;white-space:normal;float:none;font-size:11.5px;color:rgba(5,31,33,0.5);margin-top:8px">internship.flyrank.ai/verify
+              ↗</span>
+          </span>
+        </a>
+      </div>
+
+      <div class="rule"></div>
+      <p class="small">Research artifact prepared for reproducibility and public-safe communication. Last updated: 22
+        October 2026.</p>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <b>Research with careful claims.</b>
+      <p class="small">This page describes a historical click-decline proxy and a human-review workflow. It does not
+        establish causal impact from content refreshes.</p>
+      <a href="https://github.com/jagtappranav2721-cpu/ML-Internship-FlyRank">View repository ↗</a>
+    </div>
+  </footer>
+
+  <!-- Floating Back to Top Button -->
+  <button id="back-to-top" aria-label="Back to top of paper" title="Back to top">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </button>
+
+  <script>
+    (function () {
+      // Reading Progress Bar
+      const progressBar = document.getElementById('progress-bar');
+      const backToTopBtn = document.getElementById('back-to-top');
+
+      function updateScrollProgress() {
+        const docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = window.scrollY;
+        if (docHeight > 0 && progressBar) {
+          const pct = Math.min(100, Math.max(0, (scrolled / docHeight) * 100));
+          progressBar.style.width = pct + '%';
+        }
+
+        if (backToTopBtn) {
+          if (scrolled > 360) {
+            backToTopBtn.classList.add('visible');
+          } else {
+            backToTopBtn.classList.remove('visible');
+          }
+        }
+      }
+
+      window.addEventListener('scroll', updateScrollProgress, { passive: true });
+      updateScrollProgress();
+
+      if (backToTopBtn) {
+        backToTopBtn.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      // Active Navigation ScrollSpy with IntersectionObserver
+      const sections = document.querySelectorAll('article#abstract, section[id]');
+      const navLinks = document.querySelectorAll('.toc a');
+      const tocNav = document.querySelector('.toc');
+
+      if (sections.length && navLinks.length && 'IntersectionObserver' in window) {
+        const observerOptions = {
+          root: null,
+          rootMargin: '-15% 0px -65% 0px',
+          threshold: 0
+        };
+
+        let activeId = 'abstract';
+
+        function setActiveLink(id) {
+          if (!id || id === activeId) return;
+          activeId = id;
+          navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === '#' + id) {
+              link.classList.add('active');
+              // For mobile horizontal bar, scroll the active item into view
+              if (window.innerWidth <= 900 && tocNav) {
+                link.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+              }
+            } else {
+              link.classList.remove('active');
+            }
+          });
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              setActiveLink(entry.target.id);
+            }
+          });
+        }, observerOptions);
+
+        sections.forEach(sec => observer.observe(sec));
+
+        // Handle initial state on load
+        const currentHash = window.location.hash.replace('#', '');
+        if (currentHash) {
+          setActiveLink(currentHash);
+        } else {
+          navLinks[0]?.classList.add('active');
+        }
+
+        // Smooth click handler with instant active update
+        navLinks.forEach(link => {
+          link.addEventListener('click', function (e) {
+            const targetId = this.getAttribute('href').replace('#', '');
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) {
+              e.preventDefault();
+              navLinks.forEach(l => l.classList.remove('active'));
+              this.classList.add('active');
+              targetEl.scrollIntoView({ behavior: 'smooth' });
+              history.pushState(null, '', '#' + targetId);
+              if (window.innerWidth <= 900) {
+                this.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+              }
+            }
+          });
+        });
+      }
+    })();
+  </script>
+</body>
+
+</html>
